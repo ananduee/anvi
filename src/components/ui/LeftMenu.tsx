@@ -1,6 +1,9 @@
+import { useRecoilValue } from "recoil";
 import AddIcon from "../icons/AddIcon";
+import { atomProjects } from "../../state/project";
 
 export default function LeftMenu() {
+  let projects = useRecoilValue(atomProjects);
   return (
     <div className="w-56 px-4 py-4 bg-gray-100 border-r overflow-auto">
       <nav className="mt-2">

@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod config;
+mod project;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -14,7 +15,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             greet,
             config::current_workspace,
-            config::set_current_workspace
+            config::set_current_workspace,
+            project::get_projects,
+            project::create_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
