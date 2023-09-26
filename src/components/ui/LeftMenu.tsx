@@ -1,6 +1,8 @@
 import AddIcon from "../icons/AddIcon";
+import {  useWorkspaceFolderPicker } from "../../state/config";
 
 export default function LeftMenu() {
+  const rootFolder = useWorkspaceFolderPicker();
   return (
     <div className="w-56 px-4 py-4 bg-gray-100 border-r overflow-auto">
       <nav className="mt-2">
