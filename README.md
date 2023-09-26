@@ -1,7 +1,12 @@
-# Tauri + React + Typescript
+### Description
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Anvi aims to be a high performance local kanban along with sync capabilities to remote services like google drive or dropbox.
 
-## Recommended IDE Setup
+Currently it's only available as a desktop app and will support mobile app's once tauri starts supporting it.
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+It is heavily motivated from https://getstacksapp.com/ . While stacks is good at task and time managements it's notes management capabilities are limited. This app aims to combine stacks, obsidian and calendar to create a simple workflow for everything.
+
+### Libraries and components used
+
+1. https://heroicons.com/ for icons.
+2. https://ui.shadcn.com/ for ui components.
