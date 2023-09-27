@@ -1,10 +1,10 @@
 import {
   useRecoilRefresher_UNSTABLE,
   useRecoilValue,
-  useResetRecoilState,
+  useSetRecoilState,
 } from "recoil";
 import AddIcon from "../icons/AddIcon";
-import { selectorProjects } from "../../state/project";
+import { atomActiveProject, selectorProjects } from "../../state/project";
 import React, {
   KeyboardEventHandler,
   useCallback,
@@ -16,11 +16,16 @@ import { workspaceSelector } from "../../state/config";
 
 function ProjectsList() {
   let projects = useRecoilValue(selectorProjects);
+  let setActiveProject = useSetRecoilState(atomActiveProject);
   return (
     <React.Fragment>
       {projects.map((p) => {
         return (
-          <div className="cursor-pointer" key={p}>
+          <div
+            onClick={() => setActiveProject(p)}
+            className="cursor-pointer hover:bg-gray-200 mb-2"
+            key={p}
+          >
             <p>{p}</p>
           </div>
         );
@@ -65,7 +70,7 @@ function AddProjectInput(props: { hideProjectInput: () => void }) {
   );
 
   return (
-    <div>
+    <div className="mb-2">
       <input
         ref={inputRef}
         onKeyDown={onKeyDown}
