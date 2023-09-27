@@ -1,14 +1,12 @@
 import { useCallback } from "react";
-import { invoke } from '@tauri-apps/api'
 import { selector, useRecoilValue } from "recoil";
 import { open } from '@tauri-apps/api/dialog';
+import { tauriClient } from "./client";
 
 export const workspaceSelector = selector({
   key: "workspaceSelector",
   get: async () => {
-    return invoke("current_workspace").then(response => {
-      return response as null | string
-    })
+    return tauriClient.getCurrentWorkspace()
   }
 })
 
@@ -24,10 +22,7 @@ export function useWorkspaceFolderPicker() {
     console.log("root folder selected", selected);
     if (selected != null) {
       let path = Array.isArray(selected) ? selected[0] : selected;
-      return invoke("set_current_workspace", { path }).then(response => {
-        console.log("response after workspace", response);
-        return true;
-      })
+      return tauriClient.setCurrentWorkspace(path)
     } else {
       return false;
     }

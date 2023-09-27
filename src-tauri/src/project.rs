@@ -1,7 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 #[tauri::command]
@@ -19,8 +18,11 @@ pub fn get_projects(workspace: &str) -> Result<Vec<String>, String> {
             entry.map_err(|e| format!("[01] Error while reading directory entry: {:?}", e))?;
         let file_name_result = entry.file_name().into_string();
         if let Ok(file_name) = file_name_result {
-            if file_name.ends_with(".project") {
-                projects.push(file_name);
+            let project_suffix = ".project";
+            if file_name.ends_with(project_suffix) {
+                let mut opt_file_name = file_name.clone();
+                opt_file_name.truncate(file_name.len() - project_suffix.len());
+                projects.push(opt_file_name);
             }
         }
     }
@@ -35,7 +37,7 @@ pub fn create_project(workspace: &str, name: &str) -> Result<bool, String> {
         // File or folder is present.
         return Err(format!("[04] Project with name {} already exists", name));
     } else {
-        fs::write(&project_path, format!("{{ \"name\": {} }}", name))
+        fs::write(&project_path, format!("{{ \"name\": \"{}\" }}", name))
             .map_err(|e| format!("Failed to create project: {:?}", e))?;
     }
     Ok(true)
