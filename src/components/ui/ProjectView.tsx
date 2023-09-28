@@ -1,5 +1,4 @@
 import { atomActiveProject, useRefreshProjects } from "../../state/project";
-import DownArrowIcon from "../icons/DownArrowIcon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,41 +6,50 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { tauriClient } from "../../state/client";
 import { useAtomCallback } from "jotai/utils";
 import { useAtomValue } from "jotai";
+import { ChevronDownIcon } from "@radix-ui/react-icons";
 
 function ProjectControls(props: { name: string; workspace: string }) {
   let refreshProjects = useRefreshProjects();
+  let [open, setOpen] = useState(false);
 
-  const onDelete = useAtomCallback(useCallback(async (get, set) => {
-    try {
-      await tauriClient.deleteProject(props.workspace, props.name);
-      // We need to reset active project and go back to selection mode.
-      set(atomActiveProject, new Promise<string>(() => {}));
-      // Also refresh projects list.
-      refreshProjects();
-    } catch (e) {
-      console.error("Error while delete project", e);
-    }
-  }, [props.workspace, props.name, refreshProjects]));
+  const onDelete = useAtomCallback(
+    useCallback(
+      async (_get, set) => {
+        try {
+          setOpen(false);
+          // Send escape key to hide project.
+          await tauriClient.deleteProject(props.workspace, props.name);
+          // Also refresh projects list.
+          refreshProjects();
+          // We need to reset active project and go back to selection mode.
+          set(atomActiveProject, new Promise<string>(() => {}));
+        } catch (e) {
+          console.error("Error while delete project", e);
+        }
+      },
+      [props.workspace, props.name, refreshProjects, setOpen]
+    )
+  );
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="focus:outline-none">
-        <DownArrowIcon iconClass="w-6 h-6 pt-1 cursor-pointer " />
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild={true} className="focus:outline-none">
+        <ChevronDownIcon className="w-6 h-6 cursor-pointer" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="cursor-pointer">
+      <DropdownMenuContent hideWhenDetached={true} className="cursor-pointer">
         <DropdownMenuItem>Settings</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onDelete}>Delete</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onDelete}>Delete</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-export default function ProjectView(props: {workspace: string}) {
+export default function ProjectView(props: { workspace: string }) {
   let activeProject = useAtomValue(atomActiveProject);
 
   return (
