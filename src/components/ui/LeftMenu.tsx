@@ -12,7 +12,6 @@ import React, {
   useState,
 } from "react";
 import { tauriClient } from "../../state/client";
-import { workspaceSelector } from "../../state/config";
 
 function ProjectsList() {
   let projects = useRecoilValue(selectorProjects);
@@ -34,9 +33,8 @@ function ProjectsList() {
   );
 }
 
-function AddProjectInput(props: { hideProjectInput: () => void }) {
+function AddProjectInput(props: { hideProjectInput: () => void, workspace: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  let workspaceRoot = useRecoilValue(workspaceSelector);
   let projectsRefresher = useRecoilRefresher_UNSTABLE(selectorProjects);
   const [projectError, setProjectError] = useState<string | null>(null);
 
@@ -44,7 +42,7 @@ function AddProjectInput(props: { hideProjectInput: () => void }) {
     async (name: string) => {
       setProjectError(null);
       try {
-        await tauriClient.createProject(workspaceRoot!, name);
+        await tauriClient.createProject(props.workspace, name);
         projectsRefresher();
         props.hideProjectInput();
       } catch (err) {
@@ -52,7 +50,7 @@ function AddProjectInput(props: { hideProjectInput: () => void }) {
         setProjectError(err.toString());
       }
     },
-    [workspaceRoot, setProjectError, projectsRefresher, props.hideProjectInput]
+    [props.workspace, setProjectError, projectsRefresher, props.hideProjectInput]
   );
 
   let onKeyDown: KeyboardEventHandler<HTMLInputElement> = useCallback(
@@ -85,7 +83,7 @@ function AddProjectInput(props: { hideProjectInput: () => void }) {
   );
 }
 
-function AddProjectButton() {
+function AddProjectButton(props: {workspace: string}) {
   let [showAddInput, setShowAddInput] = useState(false);
   const toggleShowAddInput = useCallback(() => {
     setShowAddInput((v) => {
@@ -104,17 +102,17 @@ function AddProjectButton() {
         </span>
       </div>
       {showAddInput ? (
-        <AddProjectInput hideProjectInput={toggleShowAddInput} />
+        <AddProjectInput workspace={props.workspace} hideProjectInput={toggleShowAddInput} />
       ) : null}
     </React.Fragment>
   );
 }
 
-export default function LeftMenu() {
+export default function LeftMenu(props: {workspace: string}) {
   return (
     <div className="w-56 px-4 py-4 bg-gray-100 border-r overflow-auto">
       <nav className="mt-2">
-        <AddProjectButton />
+        <AddProjectButton workspace={props.workspace} />
         <React.Suspense fallback={<div>Loading Projects...</div>}>
           <ProjectsList />
         </React.Suspense>

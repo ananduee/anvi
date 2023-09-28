@@ -6,12 +6,12 @@ import { workspaceSelector } from "./state/config";
 import ProjectView from "./components/ui/ProjectView";
 import React from "react";
 
-function SelectedWorkspaceView() {
+function SelectedWorkspaceView(props: { workspace: string }) {
   return (
     <>
-      <LeftMenu />
+      <LeftMenu workspace={props.workspace} />
       <React.Suspense fallback={<p className="ml-2">Select a project</p>}>
-        <ProjectView />
+        <ProjectView workspace={props.workspace} />
       </React.Suspense>
     </>
   );
@@ -25,7 +25,7 @@ function App() {
       {workspace == null ? (
         <WorkspaceFolderPicker />
       ) : (
-        <SelectedWorkspaceView />
+        <SelectedWorkspaceView workspace={workspace} />
       )}
     </div>
   );

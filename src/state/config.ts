@@ -1,11 +1,12 @@
 import { useCallback } from "react";
 import { selector, useRecoilValue } from "recoil";
 import { open } from '@tauri-apps/api/dialog';
-import { tauriClient } from "./client";
+import { tauriClient } from "./client"; 
 
 export const workspaceSelector = selector({
   key: "workspaceSelector",
   get: async () => {
+    console.debug("fetching workspace selector again.")
     return tauriClient.getCurrentWorkspace()
   }
 })

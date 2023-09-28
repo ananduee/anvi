@@ -21,7 +21,8 @@ fn main() {
             config::current_workspace,
             config::set_current_workspace,
             project::get_projects,
-            project::create_project
+            project::create_project,
+            project::delete_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

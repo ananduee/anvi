@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::PathBuf,
-};
+use std::{fs, path::PathBuf};
 
 #[tauri::command]
 pub fn get_projects(workspace: &str) -> Result<Vec<String>, String> {
@@ -31,8 +28,7 @@ pub fn get_projects(workspace: &str) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub fn create_project(workspace: &str, name: &str) -> Result<bool, String> {
-    let mut project_path = PathBuf::from(workspace);
-    project_path.push(format!("{}.project", name));
+    let mut project_path = get_project_path(workspace, name);
     if project_path.exists() {
         // File or folder is present.
         return Err(format!("[04] Project with name {} already exists", name));
@@ -41,4 +37,25 @@ pub fn create_project(workspace: &str, name: &str) -> Result<bool, String> {
             .map_err(|e| format!("Failed to create project: {:?}", e))?;
     }
     Ok(true)
+}
+
+#[tauri::command]
+pub fn delete_project(workspace: &str, name: &str) -> Result<bool, String> {
+    let project_path = get_project_path(workspace, name);
+    if project_path.exists() {
+        fs::remove_file(&project_path).map_err(|e| {
+            format!(
+                "[01] Failed to delete project {}: {:?}",
+                &project_path.display(),
+                e
+            )
+        })?;
+    }
+    Ok(true)
+}
+
+fn get_project_path(workspace: &str, name: &str) -> PathBuf {
+    let mut project_path = PathBuf::from(workspace);
+    project_path.push(format!("{}.project", name));
+    project_path
 }
