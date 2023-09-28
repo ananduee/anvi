@@ -1,10 +1,10 @@
-import { useRecoilValue } from "recoil";
 import "./App.css";
 import LeftMenu from "./components/ui/LeftMenu";
 import WorkspaceFolderPicker from "./components/ui/WorkspaceFolderPicker";
-import { workspaceSelector } from "./state/config";
 import ProjectView from "./components/ui/ProjectView";
 import React from "react";
+import { useAtomValue } from "jotai";
+import { workspaceAtom } from "./state/config";
 
 function SelectedWorkspaceView(props: { workspace: string }) {
   return (
@@ -18,7 +18,7 @@ function SelectedWorkspaceView(props: { workspace: string }) {
 }
 
 function App() {
-  let workspace = useRecoilValue(workspaceSelector);
+  let workspace = useAtomValue(workspaceAtom);
 
   return (
     <div className="h-screen flex">

@@ -1,10 +1,9 @@
-import {
-  useRecoilRefresher_UNSTABLE,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
 import AddIcon from "../icons/AddIcon";
-import { atomActiveProject, selectorProjects } from "../../state/project";
+import {
+  atomActiveProject,
+  atomProjects,
+  useRefreshProjects,
+} from "../../state/project";
 import React, {
   KeyboardEventHandler,
   useCallback,
@@ -12,10 +11,11 @@ import React, {
   useState,
 } from "react";
 import { tauriClient } from "../../state/client";
+import { useAtomValue, useSetAtom } from "jotai";
 
 function ProjectsList() {
-  let projects = useRecoilValue(selectorProjects);
-  let setActiveProject = useSetRecoilState(atomActiveProject);
+  let projects = useAtomValue(atomProjects);
+  let setActiveProject = useSetAtom(atomActiveProject);
   return (
     <React.Fragment>
       {projects.map((p) => {
@@ -33,9 +33,12 @@ function ProjectsList() {
   );
 }
 
-function AddProjectInput(props: { hideProjectInput: () => void, workspace: string }) {
+function AddProjectInput(props: {
+  hideProjectInput: () => void;
+  workspace: string;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
-  let projectsRefresher = useRecoilRefresher_UNSTABLE(selectorProjects);
+  let projectsRefresher = useRefreshProjects();
   const [projectError, setProjectError] = useState<string | null>(null);
 
   let createProject = useCallback(
@@ -50,7 +53,12 @@ function AddProjectInput(props: { hideProjectInput: () => void, workspace: strin
         setProjectError(err.toString());
       }
     },
-    [props.workspace, setProjectError, projectsRefresher, props.hideProjectInput]
+    [
+      props.workspace,
+      setProjectError,
+      projectsRefresher,
+      props.hideProjectInput,
+    ]
   );
 
   let onKeyDown: KeyboardEventHandler<HTMLInputElement> = useCallback(
@@ -83,7 +91,7 @@ function AddProjectInput(props: { hideProjectInput: () => void, workspace: strin
   );
 }
 
-function AddProjectButton(props: {workspace: string}) {
+function AddProjectButton(props: { workspace: string }) {
   let [showAddInput, setShowAddInput] = useState(false);
   const toggleShowAddInput = useCallback(() => {
     setShowAddInput((v) => {
@@ -102,13 +110,16 @@ function AddProjectButton(props: {workspace: string}) {
         </span>
       </div>
       {showAddInput ? (
-        <AddProjectInput workspace={props.workspace} hideProjectInput={toggleShowAddInput} />
+        <AddProjectInput
+          workspace={props.workspace}
+          hideProjectInput={toggleShowAddInput}
+        />
       ) : null}
     </React.Fragment>
   );
 }
 
-export default function LeftMenu(props: {workspace: string}) {
+export default function LeftMenu(props: { workspace: string }) {
   return (
     <div className="w-56 px-4 py-4 bg-gray-100 border-r overflow-auto">
       <nav className="mt-2">

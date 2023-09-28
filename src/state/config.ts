@@ -1,32 +1,32 @@
 import { useCallback } from "react";
-import { selector, useRecoilValue } from "recoil";
-import { open } from '@tauri-apps/api/dialog';
-import { tauriClient } from "./client"; 
+import { open } from "@tauri-apps/api/dialog";
+import { tauriClient } from "./client";
+import { atom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 
-export const workspaceSelector = selector({
-  key: "workspaceSelector",
-  get: async () => {
-    console.debug("fetching workspace selector again.")
-    return tauriClient.getCurrentWorkspace()
-  }
-})
+export const workspaceAtom = atom(async () => {
+  return tauriClient.getCurrentWorkspace();
+});
+process.env.NODE_ENV !== "production" &&
+  (workspaceAtom.debugLabel = "workspaceAtom");
 
 export function useWorkspaceFolderPicker() {
-  let currentFolder = useRecoilValue(workspaceSelector);
-  const folderPickerCallback = useCallback(async () => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      defaultPath: currentFolder ?? undefined,
-      title: "Pick workspace folder"
-    });
-    console.log("root folder selected", selected);
-    if (selected != null) {
-      let path = Array.isArray(selected) ? selected[0] : selected;
-      return tauriClient.setCurrentWorkspace(path)
-    } else {
-      return false;
-    }
-  }, [currentFolder])
+  const folderPickerCallback = useAtomCallback(
+    useCallback(async (get) => {
+      let currentWorkspace = await get(workspaceAtom);
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: currentWorkspace ?? undefined,
+        title: "Pick workspace folder",
+      });
+      if (selected != null) {
+        let path = Array.isArray(selected) ? selected[0] : selected;
+        return tauriClient.setCurrentWorkspace(path);
+      } else {
+        return false;
+      }
+    }, [])
+  );
   return folderPickerCallback;
 }

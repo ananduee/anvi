@@ -1,19 +1,28 @@
-import { atom, selector } from "recoil";
-import { workspaceSelector } from "./config";
+import { atom } from "jotai";
+import { workspaceAtom } from "./config";
 import { tauriClient } from "./client";
+import { atomWithDefault, useAtomCallback } from "jotai/utils";
+import { useCallback } from "react";
 
-export const selectorProjects = selector<string[]>({
-  key: "selectorProjects",
-  get: async ({ get }) => {
-    let folder = get(workspaceSelector);
-    if (folder != null) {
-      return tauriClient.getProjects(folder);
-    } else {
-      return [] as string[];
-    }
-  },
+const refreshProjectsAtom = atom(0);
+
+export const atomProjects = atomWithDefault(async (get) => {
+  get(refreshProjectsAtom);
+  let workspace = await get(workspaceAtom);
+  if (workspace != null) {
+    return tauriClient.getProjects(workspace);
+  } else {
+    return [] as string[];
+  }
 });
 
-export const atomActiveProject = atom<string>({
-  key: "atomActiveProject"
-})
+// By default active project should be suspended.
+export const atomActiveProject = atom<string | Promise<string>>(
+  new Promise<string>(() => {})
+);
+
+export function useRefreshProjects() {
+  return useAtomCallback(useCallback((get, set) => {
+    set(refreshProjectsAtom, get(refreshProjectsAtom) + 1);
+  }, []));
+}

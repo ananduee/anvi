@@ -1,5 +1,4 @@
-import { useRecoilRefresher_UNSTABLE, useRecoilValue, useResetRecoilState } from "recoil";
-import { atomActiveProject, selectorProjects } from "../../state/project";
+import { atomActiveProject, useRefreshProjects } from "../../state/project";
 import DownArrowIcon from "../icons/DownArrowIcon";
 import {
   DropdownMenu,
@@ -10,20 +9,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useCallback } from "react";
 import { tauriClient } from "../../state/client";
+import { useAtomCallback } from "jotai/utils";
+import { useAtomValue } from "jotai";
 
 function ProjectControls(props: { name: string; workspace: string }) {
-  const resetActiveProject = useResetRecoilState(atomActiveProject);
-  const refetchWorkspaceProjects = useRecoilRefresher_UNSTABLE(selectorProjects);
-  const onDelete = useCallback(async () => {
+  let refreshProjects = useRefreshProjects();
+
+  const onDelete = useAtomCallback(useCallback(async (get, set) => {
     try {
       await tauriClient.deleteProject(props.workspace, props.name);
-      resetActiveProject();
-      refetchWorkspaceProjects();
+      // We need to reset active project and go back to selection mode.
+      set(atomActiveProject, new Promise<string>(() => {}));
+      // Also refresh projects list.
+      refreshProjects();
     } catch (e) {
-      console.error("Error while deleting project", e);
+      console.error("Error while delete project", e);
     }
-    
-  }, [resetActiveProject, refetchWorkspaceProjects]);
+  }, [props.workspace, props.name, refreshProjects]));
 
   return (
     <DropdownMenu>
@@ -40,7 +42,7 @@ function ProjectControls(props: { name: string; workspace: string }) {
 }
 
 export default function ProjectView(props: {workspace: string}) {
-  let activeProject = useRecoilValue(atomActiveProject);
+  let activeProject = useAtomValue(atomActiveProject);
 
   return (
     <div className="flex-1 bg-white flex flex-col">
