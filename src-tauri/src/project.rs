@@ -1,4 +1,15 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs::{self, File, OpenOptions},
+    path::PathBuf, io::BufReader,
+};
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Project {
+    name: String,
+    stacks: Option<Vec<String>>,
+}
 
 #[tauri::command]
 pub fn get_projects(workspace: &str) -> Result<Vec<String>, String> {
@@ -37,6 +48,38 @@ pub fn create_project(workspace: &str, name: &str) -> Result<bool, String> {
             .map_err(|e| format!("Failed to create project: {:?}", e))?;
     }
     Ok(true)
+}
+
+#[tauri::command]
+pub fn update_project(workspace: &str, name: &str, details: &str) -> Result<bool, String> {
+    let project_path = get_project_path(workspace, name);
+    if !project_path.exists() {
+        // File or folder is present.
+        return Err(format!("[04] Project with name {} does not exist", name));
+    } else {
+        let project: Project = serde_json::from_str(details).map_err(|e| {
+            format!(
+                "[05] Invalid request payload, failed to deserialize json. {:?}",
+                e
+            )
+        })?;
+        // Now we convert it back to json and write to file. We can potentially optimize this and just append
+        // a patch to the file. But since project file will be small skipping it and directly truncating the file.
+        let file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(project_path)
+            .map_err(|e| format!("[04] Failed to open project file {:?}", e))?;
+        serde_json::to_writer_pretty(&file, &project)
+            .map_err(|e| format!("[04] Failed to write updated project json to file {:?}", e))?;
+    }
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn get_project(workspace: &str, name: &str) -> Result<String, String> {
+    fs::read_to_string(get_project_path(workspace, name))
+        .map_err(|e| format!("[01] Failed to open project file. {:?}", e))
 }
 
 #[tauri::command]

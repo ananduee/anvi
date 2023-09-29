@@ -6,11 +6,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { tauriClient } from "../../state/client";
 import { useAtomCallback } from "jotai/utils";
 import { useAtomValue } from "jotai";
-import { ChevronDownIcon } from "@radix-ui/react-icons";
+import { ChevronDownIcon, ReaderIcon } from "@radix-ui/react-icons";
+import KanbanBoardView from "./KanbanBoardView";
 
 function ProjectControls(props: { name: string; workspace: string }) {
   let refreshProjects = useRefreshProjects();
@@ -49,17 +50,38 @@ function ProjectControls(props: { name: string; workspace: string }) {
   );
 }
 
+function ProjectHeaderRow(props: { workspace: string; name: string }) {
+  return (
+    <div className="flex">
+      <h2 className="text-lg font-semibold mr-1">{props.name}</h2>
+      <ProjectControls workspace={props.workspace} name={props.name} />
+    </div>
+  );
+}
+
+function ProjectControlRow(props: { workspace: string; name: string }) {
+  return (
+    <div className="flex pb-1">
+      <div className="cursor-pointer border-b-2 border-blue-600	">
+        <ReaderIcon className="inline-block align-middle" />{" "}
+        <span className="inline-block align-middle">Board</span>
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectView(props: { workspace: string }) {
   let activeProject = useAtomValue(atomActiveProject);
 
   return (
     <div className="flex-1 bg-white flex flex-col">
       <header className="shrink-0 border-b-2 border-gray-200 px-6">
-        <div className="flex">
-          <h2 className="text-lg font-semibold mr-1">{activeProject}</h2>
-          <ProjectControls workspace={props.workspace} name={activeProject} />
-        </div>
+        <ProjectHeaderRow workspace={props.workspace} name={activeProject} />
+        <ProjectControlRow workspace={props.workspace} name={activeProject} />
       </header>
+      <Suspense fallback={<p>Loading...</p>}>
+        <KanbanBoardView workspace={props.workspace} />
+      </Suspense>
     </div>
   );
 }

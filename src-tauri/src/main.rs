@@ -21,7 +21,9 @@ fn main() {
             config::current_workspace,
             config::set_current_workspace,
             project::get_projects,
+            project::get_project,
             project::create_project,
+            project::update_project,
             project::delete_project
         ])
         .run(tauri::generate_context!())
