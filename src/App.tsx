@@ -2,7 +2,6 @@ import "./App.css";
 import LeftMenu from "./components/ui/LeftMenu";
 import WorkspaceFolderPicker from "./components/ui/WorkspaceFolderPicker";
 import ProjectView from "./components/ui/ProjectView";
-import React from "react";
 import { useAtomValue } from "jotai";
 import { workspaceAtom } from "./state/config";
 
@@ -10,9 +9,7 @@ function SelectedWorkspaceView(props: { workspace: string }) {
   return (
     <>
       <LeftMenu workspace={props.workspace} />
-      <React.Suspense fallback={<p className="ml-2">Select a project</p>}>
-        <ProjectView workspace={props.workspace} />
-      </React.Suspense>
+      <ProjectView workspace={props.workspace} />
     </>
   );
 }

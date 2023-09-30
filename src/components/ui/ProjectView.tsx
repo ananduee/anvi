@@ -1,4 +1,8 @@
-import { atomActiveProject, useRefreshProjects } from "../../state/project";
+import {
+  atomActiveProject,
+  loadableActiveProject,
+  useRefreshProjects,
+} from "../../state/project";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,7 +75,13 @@ function ProjectControlRow(props: { workspace: string; name: string }) {
 }
 
 export default function ProjectView(props: { workspace: string }) {
-  let activeProject = useAtomValue(atomActiveProject);
+  let activeProjectState = useAtomValue(loadableActiveProject);
+  let activeProject =
+    activeProjectState.state == "hasData" ? activeProjectState.data : null;
+
+  if (activeProject == null) {
+    return <p className="ml-2">Please select active project.</p>;
+  }
 
   return (
     <div className="flex-1 bg-white flex flex-col">

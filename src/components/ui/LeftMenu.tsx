@@ -2,6 +2,7 @@ import AddIcon from "../icons/AddIcon";
 import {
   atomActiveProject,
   atomProjects,
+  loadableActiveProject,
   useRefreshProjects,
 } from "../../state/project";
 import React, {
@@ -12,17 +13,29 @@ import React, {
 } from "react";
 import { tauriClient } from "../../state/client";
 import { useAtomValue, useSetAtom } from "jotai";
+import clsx from "clsx";
 
 function ProjectsList() {
   let projects = useAtomValue(atomProjects);
   let setActiveProject = useSetAtom(atomActiveProject);
+  let activeProject = useAtomValue(loadableActiveProject);
+  let activeProjectName =
+    activeProject.state == "hasData" ? activeProject.data : null;
   return (
     <React.Fragment>
       {projects.map((p) => {
+        let isActive = activeProjectName == p;
         return (
           <div
-            onClick={() => setActiveProject(p)}
-            className="cursor-pointer hover:bg-gray-200 mb-2"
+            onClick={() => {
+              console.log("setting active project", p);
+              setActiveProject(p);
+            }}
+            className={clsx({
+              "cursor-pointer  mb-2": true,
+              "hover:bg-gray-200": !isActive,
+              "bg-white border border-gray-100": isActive,
+            })}
             key={p}
           >
             <p>{p}</p>
@@ -121,7 +134,7 @@ function AddProjectButton(props: { workspace: string }) {
 
 export default function LeftMenu(props: { workspace: string }) {
   return (
-    <div className="w-56 px-4 py-4 bg-gray-100 border-r overflow-auto">
+    <div className="sticky left-0 w-56 min-w-[14rem] px-4 py-4 bg-gray-200 border-r overflow-auto">
       <nav className="mt-2">
         <AddProjectButton workspace={props.workspace} />
         <React.Suspense fallback={<div>Loading Projects...</div>}>

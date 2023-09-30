@@ -1,6 +1,6 @@
 use std::{
-    fs::{self, File, OpenOptions},
-    path::PathBuf, io::BufReader,
+    fs::{self, OpenOptions},
+    path::PathBuf,
 };
 
 use serde::{Deserialize, Serialize};
