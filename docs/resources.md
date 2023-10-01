@@ -1,6 +1,8 @@
 ### Design
 
 1. How to create trello like layout in tailwind. https://codepen.io/Govind_Singh/pen/OJPPaNo
+2. https://plane.so/ alternative to jira has kanban like interface.
+3. Rust markdown parser https://github.com/wooorm/markdown-rs
 
 ### Jotai
 

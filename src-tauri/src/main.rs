@@ -6,6 +6,7 @@ use std::sync::RwLock;
 mod config;
 mod project;
 mod state;
+mod task;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -14,7 +15,9 @@ fn greet(name: &str) -> String {
 }
 
 fn main() {
-    tauri::Builder::default()
+    let r = task::get_tasks("/Users/anasinha/Documents/Anvi", "Anand");
+    println!("data: {}",r.unwrap());
+    /*tauri::Builder::default()
         .manage(state::ActiveWorkspace(RwLock::new(None)))
         .invoke_handler(tauri::generate_handler![
             greet,
@@ -24,8 +27,9 @@ fn main() {
             project::get_project,
             project::create_project,
             project::update_project,
-            project::delete_project
+            project::delete_project,
+            task::get_tasks
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("error while running tauri application");*/
 }
