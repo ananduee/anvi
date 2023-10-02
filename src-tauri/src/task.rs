@@ -1,5 +1,4 @@
-use std::io::prelude::*;
-use std::ops::Add;
+use std::io::{prelude::*, Lines};
 use std::path::MAIN_SEPARATOR;
 use std::{fs::File, io::BufReader, path::PathBuf};
 
@@ -25,14 +24,14 @@ struct TaskMetadata {
 #[derive(Debug, Deserialize, Serialize)]
 struct TaskComment {
     created_at: DateTime<FixedOffset>,
-    comment: String
+    comment: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct TaskTimeLog {
     start_time: DateTime<FixedOffset>,
     end_time: DateTime<FixedOffset>,
-    duration_minutes: u32
+    duration_minutes: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -40,7 +39,7 @@ struct TaskDetails {
     metadata: TaskMetadata,
     content: String,
     comments: Vec<TaskComment>,
-    time_logs: Vec<TaskTimeLog>
+    time_logs: Vec<TaskTimeLog>,
 }
 
 #[tauri::command]
@@ -109,19 +108,81 @@ pub fn get_tasks(workspace: &str, project: &str) -> Result<String, String> {
     serde_json::to_string(&tasks).map_err(|e| format!("Failed to convert tasks to json: {:?}", e))
 }
 
-pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result<String, String> {
-    let mut path = PathBuf::from(workspace);
-    path.push(project);
-    path.push("tasks");
-    path.push(task_id);
-    let f = File::open(&path)
+struct TaskFileReader {
+    inner_iter: Lines<BufReader<File>>,
+    last_line: String
+}
+
+impl TaskFileReader {
+    pub fn new(workspace: &str, project: &str, task_id: &str) -> Result<TaskFileReader, String> {
+        let mut path = PathBuf::from(workspace);
+        path.push(project);
+        path.push("tasks");
+        path.push(task_id);
+        let f = File::open(&path)
             .map_err(|e| format!("Failed to read file {}: {:?}", path.display(), e))?;
-    let mut reader = BufReader::new(f);
-    let mut front_matter_started = false;
-    let mut front_matter_ended = false;
-    let mut front_matter_text = String::new();
-    let mut main_body_text = String::new();
-    let mut reader_iter = reader.lines().into_iter();
+        let reader = BufReader::new(f);
+        Ok(TaskFileReader { inner_iter: reader.lines().into_iter(), last_line: "".to_string() })
+    }
+
+    pub fn consume_till_line_ends_with(
+        &mut self,
+        suffix: &'static str,
+    ) -> Result<(bool, String), String> {
+        let matcher = Box::new(move |l: &str| l.ends_with(suffix));
+        self.consume_till(matcher)
+    }
+
+    pub fn consume_till_line_starts_with(
+        &mut self,
+        prefix: &'static str,
+    ) -> Result<(bool, String), String> {
+        let matcher = Box::new(move |l: &str| l.starts_with(prefix));
+        self.consume_till(matcher)
+    }
+
+    fn consume_till(
+        &mut self,
+        matcher: Box<dyn Fn(&str) -> bool>,
+    ) -> Result<(bool, String), String> {
+        let mut buf = String::new();
+        let mut match_found = false;
+        loop {
+            match self.inner_iter.next() {
+                None => break,
+                Some(Err(e)) => {
+                    return Err(format!("Error while reading line: {:?}", e));
+                }
+                Some(Ok(l)) => {
+                    if matcher(&l) {
+                        // We need to stop here. For now lets ignore this line.
+                        match_found = true;
+                        self.last_line = l;
+                    } else {
+                        buf.push_str(&l);
+                        buf.push('\n');
+                        self.last_line = l;
+                    }
+                }
+            }
+        }
+        return Ok((match_found, buf));
+    }
+}
+
+pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result<String, String> {
+    let mut task_reader = TaskFileReader::new(workspace, project, task_id)?;
+    let (match_found, _) = task_reader.consume_till_line_ends_with("---")?;
+    if !match_found {
+        return Err(format!("No metadata found for task {}", task_id));
+    }
+    let (_, frontmatter_text) = task_reader.consume_till_line_ends_with("---")?;
+    let (match_found, task_body) = task_reader.consume_till_line_starts_with("## MD:Task Updates")?;
+    if match_found {
+        // Now we can read comments and events logs.
+        
+    }
+    /*
     loop {
         match reader_iter.next() {
             None => break,
@@ -141,10 +202,32 @@ pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result
             }
         }
     }
+    let mut main_body_finished = false;
     if front_matter_ended {
-
+        loop {
+            match reader_iter.next() {
+                None => break,
+                Some(Err(e)) => {
+                    return Err(format!("Error while reading line : {:?}", e));
+                },
+                Some(Ok(l)) => {
+                    if l.starts_with("## MD:Task Logs") {
+                        main_body_finished = true;
+                        break;
+                    } else {
+                        main_body_text.push_str(&l);
+                        main_body_text.push('\n');
+                    }
+                }
+            }
+        }
     }
-    /* 
+    if main_body_finished {
+        loop {
+
+        }
+    }*/
+    /*
     for l in reader.lines() {
         let l = l.map_err(|e| format!("Error reading line: {:?}", e))?;
         if !front_matter_ended {
