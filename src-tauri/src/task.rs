@@ -285,6 +285,7 @@ pub fn update_task(workspace: &str, project: &str, task: &str) -> Result<bool, S
     write_to_file(&file, &task.content)?;
     write_to_file(&file, "\n## MD:Task Updates\n")?;
     // Sort comments and event logs in descending order.
+    task.comments.iter().
     Ok(true)
 }
 
