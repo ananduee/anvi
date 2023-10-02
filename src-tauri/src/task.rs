@@ -31,7 +31,6 @@ struct TaskComment {
 struct TaskTimeLog {
     start_time: DateTime<FixedOffset>,
     end_time: DateTime<FixedOffset>,
-    duration_minutes: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -110,7 +109,7 @@ pub fn get_tasks(workspace: &str, project: &str) -> Result<String, String> {
 
 struct TaskFileReader {
     inner_iter: Lines<BufReader<File>>,
-    last_line: String
+    last_line: String,
 }
 
 impl TaskFileReader {
@@ -122,7 +121,14 @@ impl TaskFileReader {
         let f = File::open(&path)
             .map_err(|e| format!("Failed to read file {}: {:?}", path.display(), e))?;
         let reader = BufReader::new(f);
-        Ok(TaskFileReader { inner_iter: reader.lines().into_iter(), last_line: "".to_string() })
+        Ok(TaskFileReader {
+            inner_iter: reader.lines().into_iter(),
+            last_line: "".to_string(),
+        })
+    }
+
+    pub fn last_line(&self) -> String {
+        self.last_line.to_string()
     }
 
     pub fn consume_till_line_ends_with(
@@ -158,6 +164,7 @@ impl TaskFileReader {
                         // We need to stop here. For now lets ignore this line.
                         match_found = true;
                         self.last_line = l;
+                        break;
                     } else {
                         buf.push_str(&l);
                         buf.push('\n');
@@ -170,6 +177,7 @@ impl TaskFileReader {
     }
 }
 
+#[tauri::command]
 pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result<String, String> {
     let mut task_reader = TaskFileReader::new(workspace, project, task_id)?;
     let (match_found, _) = task_reader.consume_till_line_ends_with("---")?;
@@ -177,73 +185,88 @@ pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result
         return Err(format!("No metadata found for task {}", task_id));
     }
     let (_, frontmatter_text) = task_reader.consume_till_line_ends_with("---")?;
-    let (match_found, task_body) = task_reader.consume_till_line_starts_with("## MD:Task Updates")?;
+    let (match_found, task_body) =
+        task_reader.consume_till_line_starts_with("## MD:Task Updates")?;
+    let mut task_comments: Vec<TaskComment> = Vec::new();
+    let mut task_time_logs: Vec<TaskTimeLog> = Vec::new();
     if match_found {
         // Now we can read comments and events logs.
-        
-    }
-    /*
-    loop {
-        match reader_iter.next() {
-            None => break,
-            Some(Err(e)) => {
-                return Err(format!("Error while reading line : {:?}", e));
-            }
-            Some(Ok(l)) => {
-                if !front_matter_started && l.ends_with("---") {
-                    front_matter_started = true;
-                } else if front_matter_started && !l.ends_with("---") {
-                    front_matter_text.push_str(&l);
-                    front_matter_text.push('\n');
-                } else {
-                    front_matter_ended = true;
-                    break;
-                }
-            }
-        }
-    }
-    let mut main_body_finished = false;
-    if front_matter_ended {
-        loop {
-            match reader_iter.next() {
-                None => break,
-                Some(Err(e)) => {
-                    return Err(format!("Error while reading line : {:?}", e));
-                },
-                Some(Ok(l)) => {
-                    if l.starts_with("## MD:Task Logs") {
-                        main_body_finished = true;
+        let (match_found, _) = task_reader.consume_till_line_starts_with("### MD:")?;
+        if match_found {
+            loop {
+                // Start by reading the heading.
+                let heading_line = task_reader.last_line();
+                // unwrap is safe since it has just matched before the loop.
+                let headling_line_txt = heading_line.strip_prefix("### MD:").unwrap();
+                if headling_line_txt.starts_with("Comment") {
+                    // This is a comment post which we will have date.
+                    let date_txt = headling_line_txt.strip_prefix("Comment").unwrap().trim();
+                    let comment_time = DateTime::parse_from_rfc3339(date_txt).map_err(|e| {
+                        format!(
+                            "Failed to parse date string {} in task {} : {:?}",
+                            date_txt, task_id, e
+                        )
+                    })?;
+                    let (match_found, comment_body) =
+                        task_reader.consume_till_line_starts_with("### MD:")?;
+                    task_comments.push(TaskComment {
+                        created_at: comment_time,
+                        comment: comment_body,
+                    });
+                    if !match_found {
                         break;
-                    } else {
-                        main_body_text.push_str(&l);
-                        main_body_text.push('\n');
+                    }
+                } else if headling_line_txt.starts_with("TimeLog") {
+                    let mut time_txt_parts = headling_line_txt
+                        .strip_prefix("TimeLog")
+                        .unwrap()
+                        .trim()
+                        .splitn(2, " ");
+                    // index 0 will always be accesible.
+                    let start_time_txt = time_txt_parts.nth(0).unwrap();
+                    // We need to read 0 again as iterator will be mutated.
+                    let end_time_txt = time_txt_parts.nth(0).ok_or_else(|| {
+                        format!(
+                            "No end date found in time log line {} in file {}",
+                            headling_line_txt, task_id
+                        )
+                    })?;
+                    let start_time = DateTime::parse_from_rfc3339(start_time_txt).map_err(|e| {
+                        format!(
+                            "Failed to parse time log start time {} in task {}: {:?}",
+                            start_time_txt, task_id, e
+                        )
+                    })?;
+                    let end_time = DateTime::parse_from_rfc3339(end_time_txt).map_err(|e| {
+                        format!(
+                            "Failed to parse time log end time {} in task {}: {:?}",
+                            end_time_txt, task_id, e
+                        )
+                    })?;
+                    task_time_logs.push(TaskTimeLog {
+                        start_time,
+                        end_time,
+                    });
+                    // For time logs we simply ignore the contents under heading.
+                    let (match_found, _) = task_reader.consume_till_line_starts_with("### MD:")?;
+                    if !match_found {
+                        break;
                     }
                 }
             }
         }
     }
-    if main_body_finished {
-        loop {
-
-        }
-    }*/
-    /*
-    for l in reader.lines() {
-        let l = l.map_err(|e| format!("Error reading line: {:?}", e))?;
-        if !front_matter_ended {
-            if !front_matter_started && l.ends_with("---") {
-                front_matter_started = true;
-            } else if front_matter_started && !l.ends_with("---") {
-                front_matter_text.push_str(&l);
-                front_matter_text.push('\n');
-            } else {
-                front_matter_ended = true;
-            }
-        } else if !updates_started {
-            // This is core body
-        }
-    } */
-    Ok("()".to_string())
+   
+    let task_metadata: TaskMetadata = serde_yaml::from_str(&frontmatter_text)
+        .map_err(|e| format!("Failed to parse metadata text : {:?}", e))?;
+    let task_details = TaskDetails {
+        content: task_body,
+        metadata: task_metadata,
+        comments: task_comments,
+        time_logs: task_time_logs,
+    };
+    serde_json::to_string(&task_details)
+        .map_err(|e| format!("Failed to convert task details to string: {:?}", e))
 }
 
 fn is_end_of_frontmatter(mut buf: String) -> (String, bool) {
