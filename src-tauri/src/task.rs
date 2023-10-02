@@ -119,8 +119,32 @@ pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result
     let mut reader = BufReader::new(f);
     let mut front_matter_started = false;
     let mut front_matter_ended = false;
-    let mut updates_started = false;
     let mut front_matter_text = String::new();
+    let mut main_body_text = String::new();
+    let mut reader_iter = reader.lines().into_iter();
+    loop {
+        match reader_iter.next() {
+            None => break,
+            Some(Err(e)) => {
+                return Err(format!("Error while reading line : {:?}", e));
+            }
+            Some(Ok(l)) => {
+                if !front_matter_started && l.ends_with("---") {
+                    front_matter_started = true;
+                } else if front_matter_started && !l.ends_with("---") {
+                    front_matter_text.push_str(&l);
+                    front_matter_text.push('\n');
+                } else {
+                    front_matter_ended = true;
+                    break;
+                }
+            }
+        }
+    }
+    if front_matter_ended {
+
+    }
+    /* 
     for l in reader.lines() {
         let l = l.map_err(|e| format!("Error reading line: {:?}", e))?;
         if !front_matter_ended {
@@ -135,7 +159,7 @@ pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result
         } else if !updates_started {
             // This is core body
         }
-    }
+    } */
     Ok("()".to_string())
 }
 
