@@ -1,3 +1,4 @@
+use std::fs::OpenOptions;
 use std::io::{prelude::*, Lines};
 use std::path::MAIN_SEPARATOR;
 use std::{fs::File, io::BufReader, path::PathBuf};
@@ -114,10 +115,7 @@ struct TaskFileReader {
 
 impl TaskFileReader {
     pub fn new(workspace: &str, project: &str, task_id: &str) -> Result<TaskFileReader, String> {
-        let mut path = PathBuf::from(workspace);
-        path.push(project);
-        path.push("tasks");
-        path.push(task_id);
+        let mut path = get_task_path(workspace, project, task_id);
         let f = File::open(&path)
             .map_err(|e| format!("Failed to read file {}: {:?}", path.display(), e))?;
         let reader = BufReader::new(f);
@@ -256,9 +254,10 @@ pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result
             }
         }
     }
-   
-    let task_metadata: TaskMetadata = serde_yaml::from_str(&frontmatter_text)
+
+    let mut task_metadata: TaskMetadata = serde_yaml::from_str(&frontmatter_text)
         .map_err(|e| format!("Failed to parse metadata text : {:?}", e))?;
+    task_metadata.id = task_id.to_string();
     let task_details = TaskDetails {
         content: task_body,
         metadata: task_metadata,
@@ -267,6 +266,30 @@ pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result
     };
     serde_json::to_string(&task_details)
         .map_err(|e| format!("Failed to convert task details to string: {:?}", e))
+}
+
+pub fn update_task(workspace: &str, project: &str, task: &str) -> Result<bool, String> {
+    let task: TaskDetails = serde_json::from_str(task)
+        .map_err(|e| format!("Error while reading task body: {:?}", e))?;
+    let path = get_task_path(workspace, project, &task.metadata.id);
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .map_err(|e| format!("[04] Failed to open task file {:?}", e))?;
+    write_to_file(&file, "---\n")?;
+    // Now we need to write front matter yaml.
+    serde_yaml::to_writer(&mut file, &task.metadata)
+        .map_err(|e| format!("[04] Failed to write yaml to file: {:?}", e))?;
+    write_to_file(&file, "\n---\n")?;
+    write_to_file(&file, &task.content)?;
+    write_to_file(&file, "\n## MD:Task Updates\n")?;
+    // Sort comments and event logs in descending order.
+    Ok(true)
+}
+
+fn write_to_file(mut file: &File, content: &str) -> Result<(), String> {
+    file.write_all(content.as_bytes()).map_err(|e| format!("[04] Failed to write to file: {:?}", e))
 }
 
 fn is_end_of_frontmatter(mut buf: String) -> (String, bool) {
@@ -296,4 +319,12 @@ fn is_start_of_frontmatter(mut buf: String) -> (String, bool) {
     }
     buf.truncate(0);
     (buf, front_matter_started)
+}
+
+fn get_task_path(workspace: &str, project: &str, task_id: &str) -> PathBuf {
+    let mut path = PathBuf::from(workspace);
+    path.push(project);
+    path.push("tasks");
+    path.push(task_id);
+    path
 }
