@@ -5,6 +5,7 @@ use crate::state::{set_active_workspace, ActiveWorkspace};
 #[tauri::command]
 pub fn current_workspace(state: tauri::State<ActiveWorkspace>) -> Result<Option<String>, String> {
     let p = get_workspace_file()?;
+    println!("main path for workspace {}", &p.display());
     if p.is_file() {
         let workspace_path = fs::read_to_string(&p)
             .map_err(|e| format!("[01] Failed to read workspace file: {:?}", e))?;
@@ -36,6 +37,6 @@ pub fn set_current_workspace(path: &str) -> Result<bool, String> {
 
 fn get_workspace_file() -> Result<PathBuf, String> {
     tauri::api::path::cache_dir()
-        .map(|d| d.join("workspace.txt"))
+        .map(|d| d.join("anvi").join("workspace.txt"))
         .ok_or_else(|| "[01] No cache directory found.".to_string())
 }

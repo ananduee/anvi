@@ -15,6 +15,7 @@ import {
 } from "../../state/project";
 import { useCallback, useRef, useState } from "react";
 import SpinnerIcon from "../icons/SpinnerIcon";
+import AddIcon from "../icons/AddIcon";
 
 function AddNewStack(props: { project: Project; workspace: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -69,8 +70,11 @@ function AddNewStack(props: { project: Project; workspace: string }) {
 function KanbanColumn(props: { name: string }) {
   return (
     <div className="w-80 mr-2">
-      <div className="bg-white p-2 border border-gray-200">
+      <div className="bg-white p-2 border border-gray-200 flex justify-between">
         <p>{props.name}</p>
+        <div>
+          <AddIcon iconClass="w-6- h-6 cursor-pointer" />
+        </div>
       </div>
     </div>
   );
