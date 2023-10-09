@@ -6,6 +6,14 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 import { useAtomValue } from "jotai";
 import type { Project } from "../../state/client";
@@ -72,9 +80,18 @@ function KanbanColumn(props: { name: string }) {
     <div className="w-80 mr-2">
       <div className="bg-white p-2 border border-gray-200 flex justify-between">
         <p>{props.name}</p>
-        <div>
-          <AddIcon iconClass="w-6- h-6 cursor-pointer" />
-        </div>
+        <Dialog>
+          <DialogTrigger>
+            <div>
+              <AddIcon iconClass="w-6- h-6 cursor-pointer" />
+            </div>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add a new task.</DialogTitle>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
