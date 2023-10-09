@@ -4,7 +4,10 @@ import { tauriClient } from "./client";
 import { atom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 
-export const workspaceAtom = atom(async () => {
+const workspaceRefresh = atom(0);
+
+export const workspaceAtom = atom(async (get) => {
+  get(workspaceRefresh);
   return tauriClient.getCurrentWorkspace();
 });
 process.env.NODE_ENV !== "production" &&
@@ -12,7 +15,7 @@ process.env.NODE_ENV !== "production" &&
 
 export function useWorkspaceFolderPicker() {
   const folderPickerCallback = useAtomCallback(
-    useCallback(async (get) => {
+    useCallback(async (get, set) => {
       let currentWorkspace = await get(workspaceAtom);
       const selected = await open({
         directory: true,
@@ -22,7 +25,10 @@ export function useWorkspaceFolderPicker() {
       });
       if (selected != null) {
         let path = Array.isArray(selected) ? selected[0] : selected;
-        return tauriClient.setCurrentWorkspace(path);
+        let wsSet = await tauriClient.setCurrentWorkspace(path);
+        if (wsSet) {
+          set(workspaceRefresh, (v) => v + 1);
+        }
       } else {
         return false;
       }

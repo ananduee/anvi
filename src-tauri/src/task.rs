@@ -1,9 +1,10 @@
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io::{prelude::*, Lines};
 use std::path::MAIN_SEPARATOR;
 use std::{fs::File, io::BufReader, path::PathBuf};
 
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, SecondsFormat};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
@@ -115,7 +116,7 @@ struct TaskFileReader {
 
 impl TaskFileReader {
     pub fn new(workspace: &str, project: &str, task_id: &str) -> Result<TaskFileReader, String> {
-        let mut path = get_task_path(workspace, project, task_id);
+        let path = get_task_path(workspace, project, task_id);
         let f = File::open(&path)
             .map_err(|e| format!("Failed to read file {}: {:?}", path.display(), e))?;
         let reader = BufReader::new(f);
@@ -268,6 +269,7 @@ pub fn get_task_details(workspace: &str, project: &str, task_id: &str) -> Result
         .map_err(|e| format!("Failed to convert task details to string: {:?}", e))
 }
 
+#[tauri::command]
 pub fn update_task(workspace: &str, project: &str, task: &str) -> Result<bool, String> {
     let task: TaskDetails = serde_json::from_str(task)
         .map_err(|e| format!("Error while reading task body: {:?}", e))?;
@@ -285,12 +287,72 @@ pub fn update_task(workspace: &str, project: &str, task: &str) -> Result<bool, S
     write_to_file(&file, &task.content)?;
     write_to_file(&file, "\n## MD:Task Updates\n")?;
     // Sort comments and event logs in descending order.
-    task.comments.iter().
+    let mut comments_iter = task
+        .comments
+        .iter()
+        .sorted_by(|a, b| b.created_at.cmp(&a.created_at))
+        .peekable();
+    let mut events_iter = task
+        .time_logs
+        .iter()
+        .sorted_by(|a, b| b.start_time.cmp(&a.start_time))
+        .peekable();
+    loop {
+        match (comments_iter.peek(), events_iter.peek()) {
+            (None, None) => break,
+            (Some(_c), None) => {
+                write_comment(&file, comments_iter.next().unwrap())?;
+            }
+            (None, Some(_l)) => {
+                write_time_log(&file, events_iter.next().unwrap())?;
+            }
+            (Some(c), Some(e)) => match c.created_at.cmp(&e.start_time) {
+                std::cmp::Ordering::Greater | std::cmp::Ordering::Equal => {
+                    write_comment(&file, comments_iter.next().unwrap())?
+                }
+                std::cmp::Ordering::Less => write_time_log(&file, events_iter.next().unwrap())?,
+            },
+        }
+    }
     Ok(true)
 }
 
+#[tauri::command]
+pub fn delete_task(workspace: &str, project: &str, task_id: &str) -> Result<bool, String> {
+    let path = get_task_path(workspace, project, task_id);
+    fs::remove_file(path)
+        .map_err(|e| format!("[4] failed to delete task file {}: {:?}", task_id, e))
+        .map(|_v| true)
+}
+
+fn write_comment(file: &File, comment: &TaskComment) -> Result<(), String> {
+    write_to_file(
+        &file,
+        &format!(
+            "### MD:Comment {}\n\n",
+            comment
+                .created_at
+                .to_rfc3339_opts(SecondsFormat::Millis, true)
+        ),
+    )?;
+    write_to_file(&file, &comment.comment)
+}
+
+fn write_time_log(file: &File, log: &TaskTimeLog) -> Result<(), String> {
+    // ### MD:TimeLog 2019-10-12T07:20:50.52Z 2019-10-12T07:20:50.52Z
+    write_to_file(
+        &file,
+        &format!(
+            "### MD:TimeLog {} {}\n\n",
+            log.start_time.to_rfc3339_opts(SecondsFormat::Millis, true),
+            log.end_time.to_rfc3339_opts(SecondsFormat::Millis, true)
+        ),
+    )
+}
+
 fn write_to_file(mut file: &File, content: &str) -> Result<(), String> {
-    file.write_all(content.as_bytes()).map_err(|e| format!("[04] Failed to write to file: {:?}", e))
+    file.write_all(content.as_bytes())
+        .map_err(|e| format!("[04] Failed to write to file: {:?}", e))
 }
 
 fn is_end_of_frontmatter(mut buf: String) -> (String, bool) {
